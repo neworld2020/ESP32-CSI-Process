@@ -514,8 +514,6 @@ void app_main(void)
     wifi_init();
     esp_radar_init();
     ESP_LOGI(TAG, "Wifi and CSI Initialize Finish");
-    
-    ESP_LOGI(TAG, "[CPP TEST] CPP is OK: %d", network_get_output());
 
     wifi_radar_config_t radar_config = WIFI_RADAR_CONFIG_DEFAULT();
     radar_config.wifi_radar_cb = wifi_radar_cb;
@@ -523,6 +521,8 @@ void app_main(void)
     esp_radar_set_config(&radar_config);
 
     esp_radar_start();
+
+    network_init();
 
     /**
      * @brief Initialize CSI serial port printing task, Use tasks to avoid blocking wifi_csi_raw_cb

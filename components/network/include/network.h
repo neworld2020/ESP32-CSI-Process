@@ -12,15 +12,21 @@
 // The output of the network is 1 element: 1 for Movement, 0 for Non-Movement
 #define NETWORK_OUTPUT_SIZE 1
 
+// store buffer size
+#define INPUT_BUFFER_SIZE   50
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    // Input CSI data into the network
+    // Network Initialize
+    extern void network_init();
+
+    // Input CSI data into the network: make sure the length >= NETWORK_INPUT_SIZE
     extern void network_input(int8_t* data, int length);
 
-    // A function runs forever, the only way to use it is to create a task for it
-    extern void network_task();
+    // calculation: can take a long time to complete
+    extern void model_prediction();
 
     // Get Network Output
     extern int network_get_output(void);
