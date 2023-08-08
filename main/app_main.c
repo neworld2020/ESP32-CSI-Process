@@ -34,6 +34,8 @@
 
 #include "mbedtls/base64.h"
 
+#include "network.h"
+
 #define RECV_ESPNOW_CSI
 #define CONFIG_LESS_INTERFERENCE_CHANNEL    11
 #define RADAR_EVALUATE_SERVER_PORT          3232
@@ -472,9 +474,6 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
 
 void app_main(void)
 {
-    // set log level
-    esp_log_level_set("*", ESP_LOG_INFO);
-    ESP_LOGI(TAG, "Application Start");
     /**
      * @brief Register serial command
      */
@@ -507,6 +506,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uart_config, &repl_config, &repl));
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
 
+
     /**
      * @brief Initialize Wi-Fi Radar
      */
@@ -514,6 +514,8 @@ void app_main(void)
     wifi_init();
     esp_radar_init();
     ESP_LOGI(TAG, "Wifi and CSI Initialize Finish");
+    
+    ESP_LOGI(TAG, "[CPP TEST] CPP is OK: %d", network_get_output());
 
     wifi_radar_config_t radar_config = WIFI_RADAR_CONFIG_DEFAULT();
     radar_config.wifi_radar_cb = wifi_radar_cb;
