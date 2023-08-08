@@ -1,0 +1,5 @@
+dependencies:
+  esp-radar:
+    version: 0.*
+  idf:
+    version: '>=4.4.1'
