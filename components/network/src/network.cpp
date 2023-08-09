@@ -8,11 +8,11 @@
 #include "../include/model.h"
 
 using namespace Eigen;
-typedef Matrix<double, 1, NETWORK_PCA_SIZE> PCA_Matrix;
-typedef Matrix<double, 1, NETWORK_INPUT_SIZE> Input_Matrix;
-typedef Matrix<double, NETWORK_PCA_SIZE, NETWORK_INPUT_SIZE> Transform_Matrix;
+typedef Matrix<float, 1, NETWORK_PCA_SIZE> PCA_Matrix;
+typedef Matrix<float, 1, NETWORK_INPUT_SIZE> Input_Matrix;
+typedef Matrix<float, NETWORK_PCA_SIZE, NETWORK_INPUT_SIZE> Transform_Matrix;
 
-static Matrix<double, INPUT_BUFFER_SIZE, NETWORK_PCA_SIZE> buffer_matrix = Matrix<double, INPUT_BUFFER_SIZE, NETWORK_PCA_SIZE>::Zero();
+static Matrix<float, INPUT_BUFFER_SIZE, NETWORK_PCA_SIZE> buffer_matrix = Matrix<float, INPUT_BUFFER_SIZE, NETWORK_PCA_SIZE>::Zero();
 static bool can_calculate = false;
 static int buffer_index = 0;
 static int buffer_result = -1;
@@ -30,6 +30,7 @@ const tflite::Model* model = nullptr;
 tflite::MicroInterpreter* interpreter = nullptr;
 TfLiteTensor* input = nullptr;
 TfLiteTensor* output = nullptr;
+tflite::MicroMutableOpResolver<3> resolver;
 int inference_count = 0;
 
 constexpr int kTensorArenaSize = 10240;
@@ -52,7 +53,6 @@ extern void network_init()
         return;
     }
     // Pull in only the operation implementations we need.
-    static tflite::MicroMutableOpResolver<3> resolver;
     // https://netron.app/
     resolver.AddUnidirectionalSequenceLSTM();
     resolver.AddFullyConnected();
@@ -96,7 +96,7 @@ extern void network_input(int8_t* data, int length)
     if(length >= NETWORK_INPUT_SIZE) {
         Input_Matrix input_data = Input_Matrix::Zero();
         for(int i = 0; i < NETWORK_INPUT_SIZE; i++) {
-            input_data(0, i) = (double)data[i];
+            input_data(0, i) = (float)data[i];
         }
         auto pca_data = _pca_transform(input_data);
         // put matrix into network
@@ -119,7 +119,29 @@ extern void model_prediction(void)
 {
     if(can_calculate){
         // calculate
-        ;
+        // input->data.f = buffer_matrix.transpose().data();
+        for(int row=0;row < INPUT_BUFFER_SIZE;row++){
+            for(int col=0;col < NETWORK_PCA_SIZE;col++){
+                input->data.f[row*NETWORK_PCA_SIZE + col] = buffer_matrix(row, col);
+            }
+        }
+        TfLiteStatus invoke_status = interpreter->Invoke();
+        if (invoke_status != kTfLiteOk) {
+            MicroPrintf("Invoke failed");
+            return;
+        }
+        // Obtain the quantized output from model's output tensor
+        float move_prob = output->data.f[29*output->dims->data[2] + 0];
+        float static_prob = output->data.f[29*output->dims->data[2] + 1];
+        MicroPrintf("static prob: %f, move_prob: %f", static_prob, move_prob);
+        if(static_prob > STATIC_THRESHOLD){
+            buffer_result = 0;
+        }else if(move_prob > MOVE_THRESHOLD){
+            buffer_result = 1;
+        }else{
+            buffer_result = -1;
+        }
+        can_calculate = false;
     }else{
         // data is not enough
         return;
