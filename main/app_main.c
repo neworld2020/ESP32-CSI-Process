@@ -331,6 +331,7 @@ static void csi_data_process_task(void *arg)
             }
 
             len += sprintf(buffer + len, "]\"\n");
+            network_input(info->valid_data, info->valid_len);
         }
 
         // printf("%s", buffer);
@@ -472,6 +473,34 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base,
     }
 }
 
+void csi_start_cmd(void)
+{
+    const char* wifi_init_cmd = "wifi_config -s espressif -p espressif123";
+    const char* csi_init_cmd = "radar --csi_start --csi_output_type LLFT --csi_output_format decimal";
+    esp_err_t ret   = ESP_OK;
+    esp_console_run(wifi_init_cmd, &ret);
+    esp_console_run(csi_init_cmd, &ret);
+    ESP_ERROR_CHECK(ret);
+
+}
+
+void network_calculation_task(void* pvParameters)
+{
+    while(1){
+        model_prediction();
+        int result = network_get_output();
+        if(result == 0){
+            ESP_LOGI(TAG, "STATIC");
+        }else if(result == 1){
+            ESP_LOGI(TAG, "MOVE");
+        }else{
+            // result = -1, no result awailable
+            ;
+        }
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
 void app_main(void)
 {
     /**
@@ -530,5 +559,10 @@ void app_main(void)
     g_csi_info_queue = xQueueCreate(64, sizeof(void *));
     xTaskCreate(csi_data_process_task, "csi_data_print", 4 * 1024, NULL, 0, NULL);
 
+    // Create a Calculation task for network
+    xTaskCreate(network_calculation_task, "network_calculation_task", 4 * 1024, NULL, 0, NULL);
+
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL));
+
+    csi_start_cmd();
 }

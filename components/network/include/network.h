@@ -13,7 +13,11 @@
 #define NETWORK_OUTPUT_SIZE 1
 
 // store buffer size
-#define INPUT_BUFFER_SIZE   50
+#define INPUT_BUFFER_SIZE   30
+
+// THRESHOLD
+#define MOVE_THRESHOLD    0.8
+#define STATIC_THRESHOLD  0.8
 
 #ifdef __cplusplus
 extern "C" {
